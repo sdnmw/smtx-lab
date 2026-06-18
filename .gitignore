@@ -1,0 +1,19 @@
+# Local cluster credentials and machine-specific state
+kubeconfig
+*.kubeconfig
+
+# Generated artifacts and offline packages
+dist/
+e2e-artifacts/
+
+# Build outputs
+bin/
+out/
+*.test
+coverage.out
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.swo
+

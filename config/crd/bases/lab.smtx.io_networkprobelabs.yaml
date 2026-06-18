@@ -1,0 +1,444 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkprobelabs.lab.smtx.io
+spec:
+  group: lab.smtx.io
+  scope: Cluster
+  names:
+    plural: networkprobelabs
+    singular: networkprobelab
+    kind: NetworkProbeLab
+    shortNames:
+      - npl
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Tests
+          type: integer
+          jsonPath: .status.summary.totalTests
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: ["spec"]
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                target:
+                  type: object
+                  properties:
+                    namespaces:
+                      type: array
+                      items:
+                        type: string
+                    podSelector:
+                      type: object
+                      properties:
+                        matchLabels:
+                          type: object
+                          additionalProperties:
+                            type: string
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            required: ["key", "operator"]
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                              values:
+                                type: array
+                                items:
+                                  type: string
+                    serviceSelector:
+                      type: object
+                      properties:
+                        matchLabels:
+                          type: object
+                          additionalProperties:
+                            type: string
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            required: ["key", "operator"]
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                              values:
+                                type: array
+                                items:
+                                  type: string
+                    nodeSelector:
+                      type: object
+                      additionalProperties:
+                        type: string
+                traffic:
+                  type: object
+                  properties:
+                    protocols:
+                      type: array
+                      items:
+                        type: string
+                        enum: ["TCP", "UDP", "HTTP", "HTTPS"]
+                    ports:
+                      type: array
+                      items:
+                        type: integer
+                        format: int32
+                        minimum: 1
+                        maximum: 65535
+                    count:
+                      type: integer
+                      format: int32
+                      minimum: 1
+                      default: 5
+                    timeoutSeconds:
+                      type: integer
+                      format: int32
+                      minimum: 1
+                      default: 5
+                    concurrency:
+                      type: integer
+                      format: int32
+                      minimum: 1
+                      default: 4
+                    crossNodeOnly:
+                      type: boolean
+                      default: true
+                    includeServiceVIP:
+                      type: boolean
+                      default: true
+                    includePodIP:
+                      type: boolean
+                      default: true
+                    includeDNS:
+                      type: boolean
+                      default: true
+                observability:
+                  type: object
+                  properties:
+                    collectCNI:
+                      type: boolean
+                      default: true
+                    collectIptables:
+                      type: boolean
+                      default: true
+                    collectIPVS:
+                      type: boolean
+                      default: true
+                    collectConntrack:
+                      type: boolean
+                      default: true
+                    collectRoutes:
+                      type: boolean
+                      default: true
+                    chainAllowlist:
+                      type: array
+                      items:
+                        type: string
+                    conntrackFilter:
+                      type: object
+                      properties:
+                        protocols:
+                          type: array
+                          items:
+                            type: string
+                        maxEntries:
+                          type: integer
+                          format: int32
+                          minimum: 1
+                          default: 2000
+                agent:
+                  type: object
+                  properties:
+                    serviceAccountName:
+                      type: string
+                    image:
+                      type: string
+                    nodeSelector:
+                      type: object
+                      additionalProperties:
+                        type: string
+                    tolerations:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                          value:
+                            type: string
+                          effect:
+                            type: string
+                          tolerationSeconds:
+                            type: integer
+                            format: int64
+                output:
+                  type: object
+                  properties:
+                    excel:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        configMapName:
+                          type: string
+                    html:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        configMapName:
+                          type: string
+                    retainRawSnapshots:
+                      type: boolean
+            status:
+              type: object
+              properties:
+                observedGeneration:
+                  type: integer
+                  format: int64
+                phase:
+                  type: string
+                  enum: ["Pending", "Running", "Succeeded", "Failed"]
+                conditions:
+                  type: array
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: ["type"]
+                  items:
+                    type: object
+                    required: ["type", "status", "lastTransitionTime", "reason", "message"]
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      observedGeneration:
+                        type: integer
+                        format: int64
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                summary:
+                  type: object
+                  properties:
+                    totalTests:
+                      type: integer
+                      format: int32
+                    succeeded:
+                      type: integer
+                      format: int32
+                    failed:
+                      type: integer
+                      format: int32
+                    cniDetected:
+                      type: array
+                      items:
+                        type: string
+                    datapathModes:
+                      type: array
+                      items:
+                        type: string
+                    calicoOverlayModes:
+                      type: array
+                      items:
+                        type: string
+                nodeResults:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      nodeName:
+                        type: string
+                      cni:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                          version:
+                            type: string
+                          mode:
+                            type: string
+                          overlayMode:
+                            type: string
+                          calico:
+                            type: object
+                            properties:
+                              overlayMode:
+                                type: string
+                              ipipInterface:
+                                type: string
+                              vxlanInterface:
+                                type: string
+                              workloadInterfaces:
+                                type: array
+                                items:
+                                  type: string
+                              configHints:
+                                type: array
+                                items:
+                                  type: string
+                      iptables:
+                        type: object
+                        properties:
+                          captured:
+                            type: boolean
+                          chainCount:
+                            type: integer
+                            format: int32
+                          snapshotRef:
+                            type: object
+                            properties:
+                              kind:
+                                type: string
+                              name:
+                                type: string
+                          podChains:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                category:
+                                  type: string
+                                ruleCount:
+                                  type: integer
+                                  format: int32
+                                purpose:
+                                  type: string
+                          serviceChains:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                category:
+                                  type: string
+                                ruleCount:
+                                  type: integer
+                                  format: int32
+                                purpose:
+                                  type: string
+                      ipvs:
+                        type: object
+                        properties:
+                          enabled:
+                            type: boolean
+                          serviceCount:
+                            type: integer
+                            format: int32
+                          realServerCount:
+                            type: integer
+                            format: int32
+                      conntrack:
+                        type: object
+                        properties:
+                          captured:
+                            type: boolean
+                          entriesMatched:
+                            type: integer
+                            format: int32
+                probeResults:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      sourcePod:
+                        type: string
+                      sourcePodIP:
+                        type: string
+                      sourceNode:
+                        type: string
+                      sourceNodeIP:
+                        type: string
+                      targetPod:
+                        type: string
+                      targetPodIP:
+                        type: string
+                      targetNode:
+                        type: string
+                      targetNodeIP:
+                        type: string
+                      targetService:
+                        type: string
+                      serviceIP:
+                        type: string
+                      protocol:
+                        type: string
+                      port:
+                        type: integer
+                        format: int32
+                      path:
+                        type: string
+                      success:
+                        type: boolean
+                      error:
+                        type: string
+                      latencyMsP50:
+                        type: number
+                      latencyMsP95:
+                        type: number
+                      datapath:
+                        type: object
+                        properties:
+                          cni:
+                            type: string
+                          calicoOverlayMode:
+                            type: string
+                          kubeProxyMode:
+                            type: string
+                          relevantChains:
+                            type: array
+                            items:
+                              type: string
+                          podForwardChains:
+                            type: array
+                            items:
+                              type: string
+                          serviceChains:
+                            type: array
+                            items:
+                              type: string
+                          conntrackMatched:
+                            type: boolean
+                artifacts:
+                  type: object
+                  properties:
+                    excelConfigMapName:
+                      type: string
+                    htmlConfigMapName:
+                      type: string
+                    rawSnapshotConfigMapNames:
+                      type: array
+                      items:
+                        type: string

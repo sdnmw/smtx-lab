@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smtx-lab-operator
+  namespace: smtx-lab-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smtx-lab-operator
+      app.kubernetes.io/component: manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smtx-lab-operator
+        app.kubernetes.io/component: manager
+    spec:
+      serviceAccountName: smtx-lab-operator
+      containers:
+        - name: manager
+          image: 192.168.112.30/library/smtx-lab-operator:dev-calico-html-20260618175603
+          imagePullPolicy: IfNotPresent
+          args:
+            - --leader-elect
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SMTX_PROBE_IMAGE
+              value: 192.168.112.30/library/smtx-lab-operator:dev-calico-html-20260618175603
+          ports:
+            - name: metrics
+              containerPort: 8080
+            - name: healthz
+              containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: healthz
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

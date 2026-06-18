@@ -1,0 +1,60 @@
+apiVersion: lab.smtx.io/v1alpha1
+kind: NetworkProbeLab
+metadata:
+  name: cross-node-network-lab
+spec:
+  target:
+    namespaces:
+      - test
+    podSelector:
+      matchLabels:
+        app: nginx
+    serviceSelector:
+      matchLabels:
+        app: nginx
+    nodeSelector: {}
+  traffic:
+    protocols:
+      - TCP
+      - HTTP
+    ports:
+      - 80
+    count: 6
+    timeoutSeconds: 6
+    concurrency: 4
+    crossNodeOnly: true
+    includeServiceVIP: true
+    includePodIP: true
+    includeDNS: true
+  observability:
+    collectCNI: true
+    collectIptables: true
+    collectIPVS: true
+    collectConntrack: true
+    collectRoutes: true
+    chainAllowlist:
+      - KUBE-*
+      - CALI-*
+      - cali-*
+      - CILIUM_*
+      - EVEROUTE-*
+      - FLANNEL-*
+    conntrackFilter:
+      protocols:
+        - tcp
+        - udp
+      maxEntries: 2000
+  agent:
+    serviceAccountName: smtx-lab-agent
+    image: 192.168.112.30/library/smtx-lab-agent:dev-calico-v2-20260618165146
+    nodeSelector: {}
+    tolerations:
+      - operator: Exists
+  output:
+    excel:
+      enabled: true
+      configMapName: network-probe-lab-report
+    html:
+      enabled: true
+      configMapName: network-probe-lab-html-report
+    retainRawSnapshots: true

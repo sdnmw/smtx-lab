@@ -1,0 +1,20 @@
+FROM golang:1.22 AS builder
+WORKDIR /workspace
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=$GOPROXY
+COPY go.mod go.sum* ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /agent ./cmd/agent
+
+FROM debian:bookworm-slim
+RUN sed -i \
+        -e 's|http://deb.debian.org/debian-security|http://mirrors.aliyun.com/debian-security|g' \
+        -e 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' \
+        /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update \
+    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 install -y --no-install-recommends iptables iproute2 ipvsadm conntrack ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /agent /agent
+USER 0:0
+ENTRYPOINT ["/agent"]

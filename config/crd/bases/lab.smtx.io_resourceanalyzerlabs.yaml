@@ -1,0 +1,400 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: resourceanalyzerlabs.lab.smtx.io
+spec:
+  group: lab.smtx.io
+  scope: Cluster
+  names:
+    plural: resourceanalyzerlabs
+    singular: resourceanalyzerlab
+    kind: ResourceAnalyzerLab
+    shortNames:
+      - ral
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Containers
+          type: integer
+          jsonPath: .status.summary.analyzedContainers
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: ["spec"]
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                target:
+                  type: object
+                  properties:
+                    namespaces:
+                      type: array
+                      items:
+                        type: string
+                    workloadKinds:
+                      type: array
+                      items:
+                        type: string
+                        enum: ["Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "Pod"]
+                    labelSelector:
+                      type: object
+                      properties:
+                        matchLabels:
+                          type: object
+                          additionalProperties:
+                            type: string
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            required: ["key", "operator"]
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                              values:
+                                type: array
+                                items:
+                                  type: string
+                    excludeNamespaces:
+                      type: array
+                      items:
+                        type: string
+                metrics:
+                  type: object
+                  properties:
+                    prometheusURL:
+                      type: string
+                    lookbackDays:
+                      type: integer
+                      format: int32
+                      minimum: 1
+                      default: 14
+                    step:
+                      type: string
+                      default: 5m
+                    timeoutSeconds:
+                      type: integer
+                      format: int32
+                      minimum: 1
+                      default: 30
+                recommendation:
+                  type: object
+                  properties:
+                    cpu:
+                      type: object
+                      properties:
+                        requestPercentile:
+                          type: string
+                          enum: ["p50", "p90", "p95", "p99"]
+                        limitPercentile:
+                          type: string
+                          enum: ["p50", "p90", "p95", "p99"]
+                        requestHeadroomRatio:
+                          type: number
+                        limitHeadroomRatio:
+                          type: number
+                        minRequestMillicores:
+                          type: integer
+                          format: int64
+                        minRequestMiB:
+                          type: integer
+                          format: int64
+                    memory:
+                      type: object
+                      properties:
+                        requestPercentile:
+                          type: string
+                          enum: ["p50", "p90", "p95", "p99"]
+                        limitPercentile:
+                          type: string
+                          enum: ["p50", "p90", "p95", "p99"]
+                        requestHeadroomRatio:
+                          type: number
+                        limitHeadroomRatio:
+                          type: number
+                        minRequestMillicores:
+                          type: integer
+                          format: int64
+                        minRequestMiB:
+                          type: integer
+                          format: int64
+                    languageHints:
+                      type: object
+                      properties:
+                        default:
+                          type: string
+                        overrides:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              namespace:
+                                type: string
+                              workload:
+                                type: string
+                              container:
+                                type: string
+                              language:
+                                type: string
+                monitoringStack:
+                  type: object
+                  properties:
+                    autoDeploy:
+                      type: boolean
+                      default: false
+                    prometheus:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                    grafana:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                output:
+                  type: object
+                  properties:
+                    excel:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        configMapName:
+                          type: string
+                    html:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        configMapName:
+                          type: string
+                    includeRawMetrics:
+                      type: boolean
+            status:
+              type: object
+              properties:
+                observedGeneration:
+                  type: integer
+                  format: int64
+                phase:
+                  type: string
+                  enum: ["Pending", "Running", "Succeeded", "Failed"]
+                conditions:
+                  type: array
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: ["type"]
+                  items:
+                    type: object
+                    required: ["type", "status", "lastTransitionTime", "reason", "message"]
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      observedGeneration:
+                        type: integer
+                        format: int64
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                summary:
+                  type: object
+                  properties:
+                    analyzedNamespaces:
+                      type: integer
+                      format: int32
+                    analyzedWorkloads:
+                      type: integer
+                      format: int32
+                    analyzedContainers:
+                      type: integer
+                      format: int32
+                    recommendedChanges:
+                      type: integer
+                      format: int32
+                    potentialCpuRequestReductionMillicores:
+                      type: integer
+                      format: int64
+                    potentialMemoryRequestReductionMiB:
+                      type: integer
+                      format: int64
+                recommendations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      namespace:
+                        type: string
+                      workloadKind:
+                        type: string
+                      workloadName:
+                        type: string
+                      pod:
+                        type: string
+                      container:
+                        type: string
+                      language:
+                        type: string
+                      current:
+                        type: object
+                        properties:
+                          cpuRequestMillicores:
+                            type: integer
+                            format: int64
+                          cpuLimitMillicores:
+                            type: integer
+                            format: int64
+                          memoryRequestMiB:
+                            type: integer
+                            format: int64
+                          memoryLimitMiB:
+                            type: integer
+                            format: int64
+                      observed:
+                        type: object
+                        properties:
+                          cpuP50Millicores:
+                            type: integer
+                            format: int64
+                          cpuP95Millicores:
+                            type: integer
+                            format: int64
+                          cpuP99Millicores:
+                            type: integer
+                            format: int64
+                          memoryP50MiB:
+                            type: integer
+                            format: int64
+                          memoryP95MiB:
+                            type: integer
+                            format: int64
+                          memoryP99MiB:
+                            type: integer
+                            format: int64
+                      usage:
+                        type: object
+                        properties:
+                          current:
+                            type: object
+                            properties:
+                              sampleCount:
+                                type: integer
+                                format: int32
+                              cpuMinMillicores:
+                                type: integer
+                                format: int64
+                              cpuAvgMillicores:
+                                type: integer
+                                format: int64
+                              cpuMaxMillicores:
+                                type: integer
+                                format: int64
+                              memoryMinMiB:
+                                type: integer
+                                format: int64
+                              memoryAvgMiB:
+                                type: integer
+                                format: int64
+                              memoryMaxMiB:
+                                type: integer
+                                format: int64
+                          last7d:
+                            type: object
+                            properties:
+                              sampleCount:
+                                type: integer
+                                format: int32
+                              cpuMinMillicores:
+                                type: integer
+                                format: int64
+                              cpuAvgMillicores:
+                                type: integer
+                                format: int64
+                              cpuMaxMillicores:
+                                type: integer
+                                format: int64
+                              memoryMinMiB:
+                                type: integer
+                                format: int64
+                              memoryAvgMiB:
+                                type: integer
+                                format: int64
+                              memoryMaxMiB:
+                                type: integer
+                                format: int64
+                          last14d:
+                            type: object
+                            properties:
+                              sampleCount:
+                                type: integer
+                                format: int32
+                              cpuMinMillicores:
+                                type: integer
+                                format: int64
+                              cpuAvgMillicores:
+                                type: integer
+                                format: int64
+                              cpuMaxMillicores:
+                                type: integer
+                                format: int64
+                              memoryMinMiB:
+                                type: integer
+                                format: int64
+                              memoryAvgMiB:
+                                type: integer
+                                format: int64
+                              memoryMaxMiB:
+                                type: integer
+                                format: int64
+                      recommended:
+                        type: object
+                        properties:
+                          cpuRequestMillicores:
+                            type: integer
+                            format: int64
+                          cpuLimitMillicores:
+                            type: integer
+                            format: int64
+                          memoryRequestMiB:
+                            type: integer
+                            format: int64
+                          memoryLimitMiB:
+                            type: integer
+                            format: int64
+                      reason:
+                        type: string
+                artifacts:
+                  type: object
+                  properties:
+                    excelConfigMapName:
+                      type: string
+                    htmlConfigMapName:
+                      type: string
+                    rawSnapshotConfigMapNames:
+                      type: array
+                      items:
+                        type: string

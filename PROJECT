@@ -1,0 +1,25 @@
+domain: smtx.io
+layout:
+- go.kubebuilder.io/v4
+projectName: smtx-lab-operator
+repo: github.com/smtx-lab/smtx-lab-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: false
+  controller: true
+  domain: smtx.io
+  group: lab
+  kind: NetworkProbeLab
+  path: github.com/smtx-lab/smtx-lab-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: false
+  controller: true
+  domain: smtx.io
+  group: lab
+  kind: ResourceAnalyzerLab
+  path: github.com/smtx-lab/smtx-lab-operator/api/v1alpha1
+  version: v1alpha1
+version: "3"
