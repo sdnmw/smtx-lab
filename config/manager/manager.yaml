@@ -18,7 +18,7 @@ spec:
       serviceAccountName: smtx-lab-operator
       containers:
         - name: manager
-          image: 192.168.112.30/library/smtx-lab-operator:dev-calico-html-20260618175603
+          image: docker.io/lammw12/smtx-lab-operator:v0.1.0
           imagePullPolicy: IfNotPresent
           args:
             - --leader-elect
@@ -28,7 +28,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: SMTX_PROBE_IMAGE
-              value: 192.168.112.30/library/smtx-lab-operator:dev-calico-html-20260618175603
+              value: docker.io/lammw12/smtx-lab-operator:v0.1.0
           ports:
             - name: metrics
               containerPort: 8080

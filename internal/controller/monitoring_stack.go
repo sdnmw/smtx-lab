@@ -18,6 +18,9 @@ const (
 	monitoringPrometheusName       = "smtx-lab-prometheus"
 	monitoringGrafanaName          = "smtx-lab-grafana"
 	monitoringKubeStateMetricsName = "kube-state-metrics"
+	defaultPrometheusImage         = "docker.io/lammw12/prometheus:v2.53.1"
+	defaultKubeStateMetricsImage   = "docker.io/lammw12/kube-state-metrics:v2.13.0"
+	defaultGrafanaImage            = "docker.io/lammw12/grafana:11.1.4"
 )
 
 type monitoringApplyResult struct {
@@ -190,7 +193,7 @@ func prometheusDeployment(namespace string) *appsv1.Deployment {
 					Containers: []corev1.Container{
 						{
 							Name:  "prometheus",
-							Image: "192.168.112.30/library/prometheus:v2.53.1",
+							Image: defaultPrometheusImage,
 							Args: []string{
 								"--config.file=/etc/prometheus/prometheus.yml",
 								"--storage.tsdb.path=/prometheus",
@@ -261,7 +264,7 @@ func kubeStateMetricsDeployment(namespace string) *appsv1.Deployment {
 					Containers: []corev1.Container{
 						{
 							Name:  "kube-state-metrics",
-							Image: "192.168.112.30/library/kube-state-metrics:v2.13.0",
+							Image: defaultKubeStateMetricsImage,
 							Args: []string{
 								"--port=8080",
 								"--telemetry-port=8081",
@@ -331,7 +334,7 @@ func grafanaDeployment(namespace string) *appsv1.Deployment {
 					Containers: []corev1.Container{
 						{
 							Name:  "grafana",
-							Image: "192.168.112.30/library/grafana:11.1.4",
+							Image: defaultGrafanaImage,
 							Env: []corev1.EnvVar{
 								{Name: "GF_SECURITY_ADMIN_USER", Value: "admin"},
 								{Name: "GF_SECURITY_ADMIN_PASSWORD", Value: "admin"},

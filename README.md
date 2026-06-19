@@ -47,6 +47,7 @@ It provides two cluster-scoped CRDs:
 |-- config/manager               # manager Deployment and namespace
 |-- config/rbac                  # RBAC for manager and agent
 |-- config/samples               # sample CRs and nginx workload
+|-- deploy                       # generated one-command install YAML and ready CR samples
 |-- internal/agent               # CNI, iptables, IPVS, conntrack collection
 |-- internal/analyzer            # network correlation and resource recommendation
 |-- internal/controller          # NetworkProbeLab and ResourceAnalyzerLab reconcilers
@@ -114,19 +115,36 @@ flowchart TB
 - Images pushed to a registry reachable by cluster nodes
 - Go 1.22+ only if building locally
 
-The manifests currently reference images under:
+The deploy manifests use Docker Hub images:
 
 ```text
-192.168.112.30/library/
+docker.io/lammw12/smtx-lab-operator:v0.1.0
+docker.io/lammw12/smtx-lab-agent:v0.1.0
+docker.io/lammw12/prometheus:v2.53.1
+docker.io/lammw12/kube-state-metrics:v2.13.0
+docker.io/lammw12/grafana:11.1.4
+docker.io/lammw12/nginx:1.27-alpine
 ```
 
-For another environment, update:
+For another registry, update:
 
 - `config/manager/manager.yaml`
 - `config/agent/daemonset.yaml`
 - image fields in sample CRs if needed
+- `deploy/install.yaml` and files under `deploy/cr` or regenerate them from
+  `config/`
 
 ### Install Operator
+
+Fast path with the generated all-in-one manifest:
+
+```bash
+kubectl apply -f deploy/install.yaml
+kubectl -n smtx-lab-system rollout status deployment/smtx-lab-operator --timeout=180s
+kubectl -n smtx-lab-system rollout status daemonset/smtx-lab-agent --timeout=180s
+```
+
+Development path with kustomize:
 
 ```bash
 kubectl apply -k config/default
@@ -152,7 +170,7 @@ smtx-lab-grafana
 ### Deploy Test Workload
 
 ```bash
-kubectl apply -f config/samples/nginx-test-workload.yaml
+kubectl apply -f deploy/samples/nginx-test-workload.yaml
 kubectl -n test get pods -o wide
 kubectl -n test get svc
 ```
@@ -163,7 +181,7 @@ cross-node PodIP checks can be exercised.
 ### Run Network Probe Lab
 
 ```bash
-kubectl apply -f config/samples/lab_v1alpha1_networkprobelab.yaml
+kubectl apply -f deploy/cr/networkprobelab-cross-node-calico.yaml
 kubectl get networkprobelab cross-node-network-lab
 kubectl get networkprobelab cross-node-network-lab -o yaml
 ```
@@ -178,7 +196,7 @@ kubectl get npl cross-node-network-lab -o yaml
 ### Run Resource Analyzer Lab
 
 ```bash
-kubectl apply -f config/samples/lab_v1alpha1_resourceanalyzerlab.yaml
+kubectl apply -f deploy/cr/resourceanalyzerlab-14d-all-namespaces.yaml
 kubectl get resourceanalyzerlab resource-14d-analysis
 kubectl get resourceanalyzerlab resource-14d-analysis -o yaml
 ```
@@ -766,20 +784,20 @@ See [docs/e2e.md](docs/e2e.md) for details.
 Delete sample CRs:
 
 ```bash
-kubectl delete -f config/samples/lab_v1alpha1_networkprobelab.yaml
-kubectl delete -f config/samples/lab_v1alpha1_resourceanalyzerlab.yaml
+kubectl delete -f deploy/cr/networkprobelab-cross-node-calico.yaml
+kubectl delete -f deploy/cr/resourceanalyzerlab-14d-all-namespaces.yaml
 ```
 
 Delete sample workload:
 
 ```bash
-kubectl delete -f config/samples/nginx-test-workload.yaml
+kubectl delete -f deploy/samples/nginx-test-workload.yaml
 ```
 
 Uninstall operator:
 
 ```bash
-kubectl delete -k config/default
+kubectl delete -f deploy/install.yaml
 ```
 
 The lab controllers use finalizers to clean generated probe Jobs and report

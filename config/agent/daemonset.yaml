@@ -21,7 +21,7 @@ spec:
         - operator: Exists
       containers:
         - name: agent
-          image: 192.168.112.30/library/smtx-lab-agent:dev-calico-v2-20260618165146
+          image: docker.io/lammw12/smtx-lab-agent:v0.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true

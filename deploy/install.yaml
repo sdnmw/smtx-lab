@@ -1,0 +1,1236 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+  name: smtx-lab-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkprobelabs.lab.smtx.io
+spec:
+  group: lab.smtx.io
+  names:
+    kind: NetworkProbeLab
+    plural: networkprobelabs
+    shortNames:
+    - npl
+    singular: networkprobelab
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.summary.totalTests
+      name: Tests
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              agent:
+                properties:
+                  image:
+                    type: string
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  serviceAccountName:
+                    type: string
+                  tolerations:
+                    items:
+                      properties:
+                        effect:
+                          type: string
+                        key:
+                          type: string
+                        operator:
+                          type: string
+                        tolerationSeconds:
+                          format: int64
+                          type: integer
+                        value:
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              observability:
+                properties:
+                  chainAllowlist:
+                    items:
+                      type: string
+                    type: array
+                  collectCNI:
+                    default: true
+                    type: boolean
+                  collectConntrack:
+                    default: true
+                    type: boolean
+                  collectIPVS:
+                    default: true
+                    type: boolean
+                  collectIptables:
+                    default: true
+                    type: boolean
+                  collectRoutes:
+                    default: true
+                    type: boolean
+                  conntrackFilter:
+                    properties:
+                      maxEntries:
+                        default: 2000
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      protocols:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                type: object
+              output:
+                properties:
+                  excel:
+                    properties:
+                      configMapName:
+                        type: string
+                      enabled:
+                        type: boolean
+                    type: object
+                  html:
+                    properties:
+                      configMapName:
+                        type: string
+                      enabled:
+                        type: boolean
+                    type: object
+                  retainRawSnapshots:
+                    type: boolean
+                type: object
+              target:
+                properties:
+                  namespaces:
+                    items:
+                      type: string
+                    type: array
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  podSelector:
+                    properties:
+                      matchExpressions:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                  serviceSelector:
+                    properties:
+                      matchExpressions:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                type: object
+              traffic:
+                properties:
+                  concurrency:
+                    default: 4
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  count:
+                    default: 5
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  crossNodeOnly:
+                    default: true
+                    type: boolean
+                  includeDNS:
+                    default: true
+                    type: boolean
+                  includePodIP:
+                    default: true
+                    type: boolean
+                  includeServiceVIP:
+                    default: true
+                    type: boolean
+                  ports:
+                    items:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    type: array
+                  protocols:
+                    items:
+                      enum:
+                      - TCP
+                      - UDP
+                      - HTTP
+                      - HTTPS
+                      type: string
+                    type: array
+                  timeoutSeconds:
+                    default: 5
+                    format: int32
+                    minimum: 1
+                    type: integer
+                type: object
+            type: object
+          status:
+            properties:
+              artifacts:
+                properties:
+                  excelConfigMapName:
+                    type: string
+                  htmlConfigMapName:
+                    type: string
+                  rawSnapshotConfigMapNames:
+                    items:
+                      type: string
+                    type: array
+                type: object
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      type: integer
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
+                  - status
+                  - lastTransitionTime
+                  - reason
+                  - message
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              nodeResults:
+                items:
+                  properties:
+                    cni:
+                      properties:
+                        calico:
+                          properties:
+                            configHints:
+                              items:
+                                type: string
+                              type: array
+                            ipipInterface:
+                              type: string
+                            overlayMode:
+                              type: string
+                            vxlanInterface:
+                              type: string
+                            workloadInterfaces:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        mode:
+                          type: string
+                        overlayMode:
+                          type: string
+                        type:
+                          type: string
+                        version:
+                          type: string
+                      type: object
+                    conntrack:
+                      properties:
+                        captured:
+                          type: boolean
+                        entriesMatched:
+                          format: int32
+                          type: integer
+                      type: object
+                    iptables:
+                      properties:
+                        captured:
+                          type: boolean
+                        chainCount:
+                          format: int32
+                          type: integer
+                        podChains:
+                          items:
+                            properties:
+                              category:
+                                type: string
+                              name:
+                                type: string
+                              purpose:
+                                type: string
+                              ruleCount:
+                                format: int32
+                                type: integer
+                            type: object
+                          type: array
+                        serviceChains:
+                          items:
+                            properties:
+                              category:
+                                type: string
+                              name:
+                                type: string
+                              purpose:
+                                type: string
+                              ruleCount:
+                                format: int32
+                                type: integer
+                            type: object
+                          type: array
+                        snapshotRef:
+                          properties:
+                            kind:
+                              type: string
+                            name:
+                              type: string
+                          type: object
+                      type: object
+                    ipvs:
+                      properties:
+                        enabled:
+                          type: boolean
+                        realServerCount:
+                          format: int32
+                          type: integer
+                        serviceCount:
+                          format: int32
+                          type: integer
+                      type: object
+                    nodeName:
+                      type: string
+                  type: object
+                type: array
+              observedGeneration:
+                format: int64
+                type: integer
+              phase:
+                enum:
+                - Pending
+                - Running
+                - Succeeded
+                - Failed
+                type: string
+              probeResults:
+                items:
+                  properties:
+                    datapath:
+                      properties:
+                        calicoOverlayMode:
+                          type: string
+                        cni:
+                          type: string
+                        conntrackMatched:
+                          type: boolean
+                        kubeProxyMode:
+                          type: string
+                        podForwardChains:
+                          items:
+                            type: string
+                          type: array
+                        relevantChains:
+                          items:
+                            type: string
+                          type: array
+                        serviceChains:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    error:
+                      type: string
+                    latencyMsP50:
+                      type: number
+                    latencyMsP95:
+                      type: number
+                    path:
+                      type: string
+                    port:
+                      format: int32
+                      type: integer
+                    protocol:
+                      type: string
+                    serviceIP:
+                      type: string
+                    sourceNode:
+                      type: string
+                    sourceNodeIP:
+                      type: string
+                    sourcePod:
+                      type: string
+                    sourcePodIP:
+                      type: string
+                    success:
+                      type: boolean
+                    targetNode:
+                      type: string
+                    targetNodeIP:
+                      type: string
+                    targetPod:
+                      type: string
+                    targetPodIP:
+                      type: string
+                    targetService:
+                      type: string
+                  type: object
+                type: array
+              summary:
+                properties:
+                  calicoOverlayModes:
+                    items:
+                      type: string
+                    type: array
+                  cniDetected:
+                    items:
+                      type: string
+                    type: array
+                  datapathModes:
+                    items:
+                      type: string
+                    type: array
+                  failed:
+                    format: int32
+                    type: integer
+                  succeeded:
+                    format: int32
+                    type: integer
+                  totalTests:
+                    format: int32
+                    type: integer
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: resourceanalyzerlabs.lab.smtx.io
+spec:
+  group: lab.smtx.io
+  names:
+    kind: ResourceAnalyzerLab
+    plural: resourceanalyzerlabs
+    shortNames:
+    - ral
+    singular: resourceanalyzerlab
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.summary.analyzedContainers
+      name: Containers
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              metrics:
+                properties:
+                  lookbackDays:
+                    default: 14
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  prometheusURL:
+                    type: string
+                  step:
+                    default: 5m
+                    type: string
+                  timeoutSeconds:
+                    default: 30
+                    format: int32
+                    minimum: 1
+                    type: integer
+                type: object
+              monitoringStack:
+                properties:
+                  autoDeploy:
+                    default: false
+                    type: boolean
+                  grafana:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                  prometheus:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                type: object
+              output:
+                properties:
+                  excel:
+                    properties:
+                      configMapName:
+                        type: string
+                      enabled:
+                        type: boolean
+                    type: object
+                  html:
+                    properties:
+                      configMapName:
+                        type: string
+                      enabled:
+                        type: boolean
+                    type: object
+                  includeRawMetrics:
+                    type: boolean
+                type: object
+              recommendation:
+                properties:
+                  cpu:
+                    properties:
+                      limitHeadroomRatio:
+                        type: number
+                      limitPercentile:
+                        enum:
+                        - p50
+                        - p90
+                        - p95
+                        - p99
+                        type: string
+                      minRequestMiB:
+                        format: int64
+                        type: integer
+                      minRequestMillicores:
+                        format: int64
+                        type: integer
+                      requestHeadroomRatio:
+                        type: number
+                      requestPercentile:
+                        enum:
+                        - p50
+                        - p90
+                        - p95
+                        - p99
+                        type: string
+                    type: object
+                  languageHints:
+                    properties:
+                      default:
+                        type: string
+                      overrides:
+                        items:
+                          properties:
+                            container:
+                              type: string
+                            language:
+                              type: string
+                            namespace:
+                              type: string
+                            workload:
+                              type: string
+                          type: object
+                        type: array
+                    type: object
+                  memory:
+                    properties:
+                      limitHeadroomRatio:
+                        type: number
+                      limitPercentile:
+                        enum:
+                        - p50
+                        - p90
+                        - p95
+                        - p99
+                        type: string
+                      minRequestMiB:
+                        format: int64
+                        type: integer
+                      minRequestMillicores:
+                        format: int64
+                        type: integer
+                      requestHeadroomRatio:
+                        type: number
+                      requestPercentile:
+                        enum:
+                        - p50
+                        - p90
+                        - p95
+                        - p99
+                        type: string
+                    type: object
+                type: object
+              target:
+                properties:
+                  excludeNamespaces:
+                    items:
+                      type: string
+                    type: array
+                  labelSelector:
+                    properties:
+                      matchExpressions:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                  namespaces:
+                    items:
+                      type: string
+                    type: array
+                  workloadKinds:
+                    items:
+                      enum:
+                      - Deployment
+                      - StatefulSet
+                      - DaemonSet
+                      - ReplicaSet
+                      - Pod
+                      type: string
+                    type: array
+                type: object
+            type: object
+          status:
+            properties:
+              artifacts:
+                properties:
+                  excelConfigMapName:
+                    type: string
+                  htmlConfigMapName:
+                    type: string
+                  rawSnapshotConfigMapNames:
+                    items:
+                      type: string
+                    type: array
+                type: object
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      type: integer
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
+                  - status
+                  - lastTransitionTime
+                  - reason
+                  - message
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                format: int64
+                type: integer
+              phase:
+                enum:
+                - Pending
+                - Running
+                - Succeeded
+                - Failed
+                type: string
+              recommendations:
+                items:
+                  properties:
+                    container:
+                      type: string
+                    current:
+                      properties:
+                        cpuLimitMillicores:
+                          format: int64
+                          type: integer
+                        cpuRequestMillicores:
+                          format: int64
+                          type: integer
+                        memoryLimitMiB:
+                          format: int64
+                          type: integer
+                        memoryRequestMiB:
+                          format: int64
+                          type: integer
+                      type: object
+                    language:
+                      type: string
+                    namespace:
+                      type: string
+                    observed:
+                      properties:
+                        cpuP50Millicores:
+                          format: int64
+                          type: integer
+                        cpuP95Millicores:
+                          format: int64
+                          type: integer
+                        cpuP99Millicores:
+                          format: int64
+                          type: integer
+                        memoryP50MiB:
+                          format: int64
+                          type: integer
+                        memoryP95MiB:
+                          format: int64
+                          type: integer
+                        memoryP99MiB:
+                          format: int64
+                          type: integer
+                      type: object
+                    pod:
+                      type: string
+                    reason:
+                      type: string
+                    recommended:
+                      properties:
+                        cpuLimitMillicores:
+                          format: int64
+                          type: integer
+                        cpuRequestMillicores:
+                          format: int64
+                          type: integer
+                        memoryLimitMiB:
+                          format: int64
+                          type: integer
+                        memoryRequestMiB:
+                          format: int64
+                          type: integer
+                      type: object
+                    usage:
+                      properties:
+                        current:
+                          properties:
+                            cpuAvgMillicores:
+                              format: int64
+                              type: integer
+                            cpuMaxMillicores:
+                              format: int64
+                              type: integer
+                            cpuMinMillicores:
+                              format: int64
+                              type: integer
+                            memoryAvgMiB:
+                              format: int64
+                              type: integer
+                            memoryMaxMiB:
+                              format: int64
+                              type: integer
+                            memoryMinMiB:
+                              format: int64
+                              type: integer
+                            sampleCount:
+                              format: int32
+                              type: integer
+                          type: object
+                        last7d:
+                          properties:
+                            cpuAvgMillicores:
+                              format: int64
+                              type: integer
+                            cpuMaxMillicores:
+                              format: int64
+                              type: integer
+                            cpuMinMillicores:
+                              format: int64
+                              type: integer
+                            memoryAvgMiB:
+                              format: int64
+                              type: integer
+                            memoryMaxMiB:
+                              format: int64
+                              type: integer
+                            memoryMinMiB:
+                              format: int64
+                              type: integer
+                            sampleCount:
+                              format: int32
+                              type: integer
+                          type: object
+                        last14d:
+                          properties:
+                            cpuAvgMillicores:
+                              format: int64
+                              type: integer
+                            cpuMaxMillicores:
+                              format: int64
+                              type: integer
+                            cpuMinMillicores:
+                              format: int64
+                              type: integer
+                            memoryAvgMiB:
+                              format: int64
+                              type: integer
+                            memoryMaxMiB:
+                              format: int64
+                              type: integer
+                            memoryMinMiB:
+                              format: int64
+                              type: integer
+                            sampleCount:
+                              format: int32
+                              type: integer
+                          type: object
+                      type: object
+                    workloadKind:
+                      type: string
+                    workloadName:
+                      type: string
+                  type: object
+                type: array
+              summary:
+                properties:
+                  analyzedContainers:
+                    format: int32
+                    type: integer
+                  analyzedNamespaces:
+                    format: int32
+                    type: integer
+                  analyzedWorkloads:
+                    format: int32
+                    type: integer
+                  potentialCpuRequestReductionMillicores:
+                    format: int64
+                    type: integer
+                  potentialMemoryRequestReductionMiB:
+                    format: int64
+                    type: integer
+                  recommendedChanges:
+                    format: int32
+                    type: integer
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: smtx-lab-agent
+  namespace: smtx-lab-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: smtx-lab-operator
+  namespace: smtx-lab-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: smtx-lab-agent
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - pods
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: smtx-lab-operator
+rules:
+- apiGroups:
+  - lab.smtx.io
+  resources:
+  - networkprobelabs
+  - resourceanalyzerlabs
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - lab.smtx.io
+  resources:
+  - networkprobelabs/status
+  - resourceanalyzerlabs/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - lab.smtx.io
+  resources:
+  - networkprobelabs/finalizers
+  - resourceanalyzerlabs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - endpoints
+  - nodes
+  - namespaces
+  - configmaps
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  - persistentvolumes
+  - resourcequotas
+  - limitranges
+  - replicationcontrollers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes/metrics
+  - nodes/proxy
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - daemonsets
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  - networkpolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  - volumeattachments
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: smtx-lab-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: smtx-lab-agent
+subjects:
+- kind: ServiceAccount
+  name: smtx-lab-agent
+  namespace: smtx-lab-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: smtx-lab-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: smtx-lab-operator
+subjects:
+- kind: ServiceAccount
+  name: smtx-lab-operator
+  namespace: smtx-lab-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smtx-lab-operator
+  namespace: smtx-lab-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: manager
+      app.kubernetes.io/name: smtx-lab-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: manager
+        app.kubernetes.io/name: smtx-lab-operator
+    spec:
+      containers:
+      - args:
+        - --leader-elect
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SMTX_PROBE_IMAGE
+          value: docker.io/lammw12/smtx-lab-operator:v0.1.0
+        image: docker.io/lammw12/smtx-lab-operator:v0.1.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+        name: manager
+        ports:
+        - containerPort: 8080
+          name: metrics
+        - containerPort: 8081
+          name: healthz
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+      serviceAccountName: smtx-lab-operator
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: smtx-lab-agent
+  namespace: smtx-lab-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: node-agent
+      app.kubernetes.io/name: smtx-lab-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: node-agent
+        app.kubernetes.io/name: smtx-lab-agent
+    spec:
+      containers:
+      - env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: HOST_PROC
+          value: /host/proc
+        - name: BIND_ADDRESS
+          value: :18080
+        image: docker.io/lammw12/smtx-lab-agent:v0.1.0
+        imagePullPolicy: IfNotPresent
+        name: agent
+        ports:
+        - containerPort: 18080
+          hostPort: 18080
+          name: http
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 20m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: true
+          privileged: true
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /host/etc/cni/net.d
+          name: cni-config
+          readOnly: true
+        - mountPath: /host/proc
+          name: host-proc
+          readOnly: true
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
+      hostNetwork: true
+      hostPID: true
+      serviceAccountName: smtx-lab-agent
+      tolerations:
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /etc/cni/net.d
+          type: DirectoryOrCreate
+        name: cni-config
+      - hostPath:
+          path: /proc
+          type: Directory
+        name: host-proc
+      - hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+        name: xtables-lock

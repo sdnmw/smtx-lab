@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-IMG ?= smtx/smtx-lab-operator:dev
-AGENT_IMG ?= smtx/smtx-lab-agent:dev
+IMG ?= docker.io/lammw12/smtx-lab-operator:v0.1.0
+AGENT_IMG ?= docker.io/lammw12/smtx-lab-agent:v0.1.0
 
 .PHONY: test
 test:

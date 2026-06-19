@@ -1,0 +1,41 @@
+apiVersion: lab.smtx.io/v1alpha1
+kind: ResourceAnalyzerLab
+metadata:
+  name: resource-14d-analysis
+spec:
+  target:
+    excludeNamespaces:
+      - kube-system
+  metrics:
+    lookbackDays: 14
+    step: 5m
+    timeoutSeconds: 60
+  recommendation:
+    cpu:
+      requestPercentile: p95
+      limitPercentile: p99
+      requestHeadroomRatio: 1.2
+      limitHeadroomRatio: 1.5
+      minRequestMillicores: 50
+    memory:
+      requestPercentile: p95
+      limitPercentile: p99
+      requestHeadroomRatio: 1.15
+      limitHeadroomRatio: 1.3
+      minRequestMiB: 64
+    languageHints:
+      default: Go
+  monitoringStack:
+    autoDeploy: true
+    prometheus:
+      enabled: true
+    grafana:
+      enabled: true
+  output:
+    excel:
+      enabled: true
+      configMapName: resource-analyzer-report
+    html:
+      enabled: true
+      configMapName: resource-analyzer-html-report
+    includeRawMetrics: false
