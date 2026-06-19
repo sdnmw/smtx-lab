@@ -21,7 +21,7 @@ spec:
         - operator: Exists
       containers:
         - name: agent
-          image: docker.io/lammw12/smtx-lab-agent:v0.1.0
+          image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true

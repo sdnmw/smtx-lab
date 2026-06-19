@@ -18,9 +18,9 @@ const (
 	monitoringPrometheusName       = "smtx-lab-prometheus"
 	monitoringGrafanaName          = "smtx-lab-grafana"
 	monitoringKubeStateMetricsName = "kube-state-metrics"
-	defaultPrometheusImage         = "docker.io/lammw12/prometheus:v2.53.1"
-	defaultKubeStateMetricsImage   = "docker.io/lammw12/kube-state-metrics:v2.13.0"
-	defaultGrafanaImage            = "docker.io/lammw12/grafana:11.1.4"
+	defaultPrometheusImage         = "registry.cn-hangzhou.aliyuncs.com/smtxlab/prometheus:v2.53.1"
+	defaultKubeStateMetricsImage   = "registry.cn-hangzhou.aliyuncs.com/smtxlab/kube-state-metrics:v2.13.0"
+	defaultGrafanaImage            = "registry.cn-hangzhou.aliyuncs.com/smtxlab/grafana:11.1.4"
 )
 
 type monitoringApplyResult struct {

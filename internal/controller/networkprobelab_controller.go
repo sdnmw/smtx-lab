@@ -1108,7 +1108,7 @@ func (r *NetworkProbeLabReconciler) probeImage() string {
 	if image := os.Getenv("SMTX_PROBE_IMAGE"); image != "" {
 		return image
 	}
-	return "docker.io/lammw12/smtx-lab-operator:v0.1.0"
+	return "registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0"
 }
 
 func networkReportLabels(lab *labv1alpha1.NetworkProbeLab) map[string]string {

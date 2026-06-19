@@ -115,15 +115,15 @@ flowchart TB
 - Images pushed to a registry reachable by cluster nodes
 - Go 1.22+ only if building locally
 
-The deploy manifests use Docker Hub images:
+The deploy manifests use Alibaba Cloud ACR images:
 
 ```text
-docker.io/lammw12/smtx-lab-operator:v0.1.0
-docker.io/lammw12/smtx-lab-agent:v0.1.0
-docker.io/lammw12/prometheus:v2.53.1
-docker.io/lammw12/kube-state-metrics:v2.13.0
-docker.io/lammw12/grafana:11.1.4
-docker.io/lammw12/nginx:1.27-alpine
+registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
+registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.1.0
+registry.cn-hangzhou.aliyuncs.com/smtxlab/prometheus:v2.53.1
+registry.cn-hangzhou.aliyuncs.com/smtxlab/kube-state-metrics:v2.13.0
+registry.cn-hangzhou.aliyuncs.com/smtxlab/grafana:11.1.4
+registry.cn-hangzhou.aliyuncs.com/smtxlab/nginx:1.27-alpine
 ```
 
 For another registry, update:

@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-IMG ?= docker.io/lammw12/smtx-lab-operator:v0.1.0
-AGENT_IMG ?= docker.io/lammw12/smtx-lab-agent:v0.1.0
+IMG ?= registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
+AGENT_IMG ?= registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.1.0
 
 .PHONY: test
 test:
