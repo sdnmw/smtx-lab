@@ -18,7 +18,7 @@ spec:
       serviceAccountName: smtx-lab-operator
       containers:
         - name: manager
-          image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
+          image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.2.1
           imagePullPolicy: IfNotPresent
           args:
             - --leader-elect
@@ -28,7 +28,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: SMTX_PROBE_IMAGE
-              value: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
+              value: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.2.1
           ports:
             - name: metrics
               containerPort: 8080

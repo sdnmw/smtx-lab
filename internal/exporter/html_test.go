@@ -16,14 +16,50 @@ func TestWriteNetworkHTML(t *testing.T) {
 		CNIDetected:        []string{"calico"},
 		CalicoOverlayModes: []string{"ipip"},
 	}, []labv1alpha1.NetworkProbeResult{{
+		SourcePod:    "smtx/probe-a",
 		SourcePodIP:  "172.31.1.10",
+		SourceNode:   "node-a",
 		SourceNodeIP: "192.168.1.10",
+		TargetPod:    "test/nginx-b",
 		TargetPodIP:  "172.31.2.10",
+		TargetNode:   "node-b",
 		TargetNodeIP: "192.168.1.11",
 		Protocol:     "TCP",
+		Port:         80,
 		Path:         "podIP",
 		Success:      true,
 		LatencyMsP95: 1.25,
+		Datapath: labv1alpha1.DatapathSummary{
+			CNI:               "calico",
+			CalicoOverlayMode: "ipip",
+			ChainPath: []labv1alpha1.IptablesTraceStep{{
+				Order: 1, Node: "node-a", Stage: "source-egress", Table: "filter", Chain: "cali-FORWARD", Purpose: "Calico forwarding",
+			}},
+		},
+	}, {
+		SourcePod:     "smtx/probe-a",
+		SourcePodIP:   "172.31.1.10",
+		SourceNode:    "node-a",
+		SourceNodeIP:  "192.168.1.10",
+		TargetPod:     "test/nginx-b",
+		TargetPodIP:   "172.31.2.10",
+		TargetNode:    "node-b",
+		TargetNodeIP:  "192.168.1.11",
+		TargetService: "test/nginx",
+		ServiceIP:     "10.96.0.20",
+		Protocol:      "TCP",
+		Port:          80,
+		Path:          "serviceVIP",
+		Success:       true,
+		Datapath: labv1alpha1.DatapathSummary{
+			KubeProxyMode:         "iptables",
+			ServiceEndpointSource: "service-selector-correlated",
+			ChainPath: []labv1alpha1.IptablesTraceStep{{
+				Order: 1, Node: "node-a", Stage: "service-dnat", Table: "nat", Chain: "KUBE-SERVICES", Action: "jump KUBE-SVC-TEST",
+			}, {
+				Order: 2, Node: "node-a", Stage: "service-dnat", Table: "nat", Chain: "KUBE-SVC-TEST", Action: "select KUBE-SEP-TEST",
+			}},
+		},
 	}}, []labv1alpha1.NetworkNodeResult{{
 		NodeName: "node-a",
 		CNI: labv1alpha1.CNIStatus{
@@ -44,7 +80,7 @@ func TestWriteNetworkHTML(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := buf.String()
-	for _, want := range []string{"Network Probe Report", "172.31.1.10", "cali-FORWARD", "ipip"} {
+	for _, want := range []string{"Network Probe Report", "172.31.1.10", "cali-FORWARD", "ipip", "Pod-to-Pod iptables calls", "Pod-to-Service-to-Pod iptables calls", "KUBE-SVC-TEST", "Correlated endpoint"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("html missing %q: %s", want, html)
 		}
@@ -95,10 +131,13 @@ func TestWriteResourceHTML(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := buf.String()
-	for _, want := range []string{"Resource Recommendation Report", "orders-abc", "test recommendation", "prod"} {
+	for _, want := range []string{"Resource Recommendation Report", "orders-abc", "test recommendation", "prod", "Pod recommendations", "300m / 600m", "256Mi / 384Mi", `class="recommended"`} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("html missing %q: %s", want, html)
 		}
+	}
+	if strings.Contains(html, "Namespace summary") {
+		t.Fatalf("html still contains removed namespace summary: %s", html)
 	}
 	if strings.Contains(html, "ZgotmplZ") {
 		t.Fatalf("html contains blocked template content: %s", html)

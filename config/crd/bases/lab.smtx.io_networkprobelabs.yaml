@@ -429,6 +429,28 @@ spec:
                             type: array
                             items:
                               type: string
+                          chainPath:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                order:
+                                  type: integer
+                                  format: int32
+                                node:
+                                  type: string
+                                stage:
+                                  type: string
+                                table:
+                                  type: string
+                                chain:
+                                  type: string
+                                action:
+                                  type: string
+                                purpose:
+                                  type: string
+                          serviceEndpointSource:
+                            type: string
                           conntrackMatched:
                             type: boolean
                 artifacts:

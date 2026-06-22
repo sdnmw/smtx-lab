@@ -118,8 +118,8 @@ flowchart TB
 The deploy manifests use Alibaba Cloud ACR images:
 
 ```text
-registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
-registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.1.0
+registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.2.1
+registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.2.1
 registry.cn-hangzhou.aliyuncs.com/smtxlab/prometheus:v2.53.1
 registry.cn-hangzhou.aliyuncs.com/smtxlab/kube-state-metrics:v2.13.0
 registry.cn-hangzhou.aliyuncs.com/smtxlab/grafana:11.1.4
@@ -236,9 +236,10 @@ kubectl -n smtx-lab-system get cm resource-analyzer-html-report \
   | base64 -d > resource-recommendations.html
 ```
 
-The HTML reports are self-contained pages designed for dashboard-style reading:
-summary cards, grouped tables, critical findings, and detailed rows similar to a
-Grafana report.
+The HTML reports are self-contained pages designed for dashboard-style reading.
+The network report includes cross-node Pod-to-Pod and Pod-to-Service-to-Pod
+relationship diagrams plus ordered per-node iptables chain calls. The resource
+report includes green-highlighted Pod and container CPU/memory recommendations.
 
 ## NetworkProbeLab
 
@@ -286,6 +287,8 @@ Important status fields:
 | `summary.calicoOverlayModes` | Distinct Calico overlay modes |
 | `nodeResults` | Per-node CNI, iptables, IPVS, conntrack summary |
 | `probeResults` | Per-check result, source/target IPs, latency, datapath |
+| `probeResults[].datapath.chainPath` | Ordered node/table/chain/action calls correlated to this traffic path |
+| `probeResults[].datapath.serviceEndpointSource` | Explains how a Service backend endpoint was correlated |
 | `artifacts` | ConfigMap names for Excel, HTML, and raw snapshots |
 
 ### Network Probe Flow

@@ -382,6 +382,26 @@ spec:
                       properties:
                         calicoOverlayMode:
                           type: string
+                        chainPath:
+                          items:
+                            properties:
+                              action:
+                                type: string
+                              chain:
+                                type: string
+                              node:
+                                type: string
+                              order:
+                                format: int32
+                                type: integer
+                              purpose:
+                                type: string
+                              stage:
+                                type: string
+                              table:
+                                type: string
+                            type: object
+                          type: array
                         cni:
                           type: string
                         conntrackMatched:
@@ -400,6 +420,8 @@ spec:
                           items:
                             type: string
                           type: array
+                        serviceEndpointSource:
+                          type: string
                       type: object
                     error:
                       type: string
@@ -1137,8 +1159,8 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: SMTX_PROBE_IMAGE
-          value: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
-        image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
+          value: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.2.1
+        image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.2.1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1189,7 +1211,7 @@ spec:
           value: /host/proc
         - name: BIND_ADDRESS
           value: :18080
-        image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.1.0
+        image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.2.1
         imagePullPolicy: IfNotPresent
         name: agent
         ports:

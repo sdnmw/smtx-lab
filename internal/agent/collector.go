@@ -47,5 +47,12 @@ func (c Collector) Collect(ctx context.Context, req SnapshotRequest) Snapshot {
 		}
 		snapshot.Conntrack = conntrack
 	}
+	if req.CollectRoutes {
+		routes, err := c.CollectRoutes(ctx)
+		if err != nil {
+			snapshot.Errors = append(snapshot.Errors, fmt.Sprintf("collect routes: %v", err))
+		}
+		snapshot.Routes = routes
+	}
 	return snapshot
 }

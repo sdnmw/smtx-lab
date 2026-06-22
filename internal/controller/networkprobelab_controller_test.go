@@ -67,6 +67,28 @@ func TestBuildProbeChecksCrossNode(t *testing.T) {
 	}
 }
 
+func TestCorrelatedServiceBackendPrefersCrossNode(t *testing.T) {
+	pods := []corev1.Pod{
+		probeTargetPod("test", "nginx-a", "node-a", "172.31.1.10"),
+		probeTargetPod("test", "nginx-b", "node-b", "172.31.2.10"),
+	}
+	for idx := range pods {
+		pods[idx].Labels = map[string]string{"app": "nginx"}
+	}
+	services := []corev1.Service{{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "nginx"},
+		Spec:       corev1.ServiceSpec{Selector: map[string]string{"app": "nginx"}},
+	}}
+
+	backend := correlatedServiceBackend("test/nginx", "node-a", pods, services)
+	if backend == nil {
+		t.Fatal("expected correlated backend")
+	}
+	if backend.Name != "nginx-b" || backend.Spec.NodeName != "node-b" {
+		t.Fatalf("backend = %s/%s, want cross-node nginx-b/node-b", backend.Name, backend.Spec.NodeName)
+	}
+}
+
 func TestRunNetworkProbeCompletedWritesReport(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := corev1.AddToScheme(scheme); err != nil {

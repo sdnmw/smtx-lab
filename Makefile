@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-IMG ?= registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0
-AGENT_IMG ?= registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.1.0
+IMG ?= registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.2.1
+AGENT_IMG ?= registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.2.1
 
 .PHONY: test
 test:

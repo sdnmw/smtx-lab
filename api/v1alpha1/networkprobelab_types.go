@@ -161,13 +161,25 @@ type NetworkProbeResult struct {
 }
 
 type DatapathSummary struct {
-	CNI               string   `json:"cni,omitempty"`
-	CalicoOverlayMode string   `json:"calicoOverlayMode,omitempty"`
-	KubeProxyMode     string   `json:"kubeProxyMode,omitempty"`
-	RelevantChains    []string `json:"relevantChains,omitempty"`
-	PodForwardChains  []string `json:"podForwardChains,omitempty"`
-	ServiceChains     []string `json:"serviceChains,omitempty"`
-	ConntrackMatched  bool     `json:"conntrackMatched,omitempty"`
+	CNI                   string              `json:"cni,omitempty"`
+	CalicoOverlayMode     string              `json:"calicoOverlayMode,omitempty"`
+	KubeProxyMode         string              `json:"kubeProxyMode,omitempty"`
+	RelevantChains        []string            `json:"relevantChains,omitempty"`
+	PodForwardChains      []string            `json:"podForwardChains,omitempty"`
+	ServiceChains         []string            `json:"serviceChains,omitempty"`
+	ChainPath             []IptablesTraceStep `json:"chainPath,omitempty"`
+	ServiceEndpointSource string              `json:"serviceEndpointSource,omitempty"`
+	ConntrackMatched      bool                `json:"conntrackMatched,omitempty"`
+}
+
+type IptablesTraceStep struct {
+	Order   int32  `json:"order,omitempty"`
+	Node    string `json:"node,omitempty"`
+	Stage   string `json:"stage,omitempty"`
+	Table   string `json:"table,omitempty"`
+	Chain   string `json:"chain,omitempty"`
+	Action  string `json:"action,omitempty"`
+	Purpose string `json:"purpose,omitempty"`
 }
 
 // +kubebuilder:object:root=true

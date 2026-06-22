@@ -221,22 +221,39 @@ func (r *NetworkProbeLabReconciler) runNetworkProbe(ctx context.Context, lab *la
 	for _, report := range reports {
 		for _, item := range report.Results {
 			probeResult := probeResultFromReport(lab.Name, item, nodeIPs)
+			serviceEndpointSource := ""
+			if item.TargetService != "" && probeResult.TargetPodIP == "" {
+				if backend := correlatedServiceBackend(item.TargetService, item.SourceNode, pods, services); backend != nil {
+					probeResult.TargetPod = backend.Namespace + "/" + backend.Name
+					probeResult.TargetPodIP = backend.Status.PodIP
+					probeResult.TargetNode = backend.Spec.NodeName
+					probeResult.TargetNodeIP = nodeIPs[backend.Spec.NodeName]
+					serviceEndpointSource = "service-selector-correlated"
+				}
+			}
 			if snapshot, ok := snapshotByNode[item.SourceNode]; ok {
-				correlation := analyzer.CorrelateDatapath(snapshot, analyzer.TrafficObservation{
+				traffic := analyzer.TrafficObservation{
 					Protocol:  item.Protocol,
 					SourceIP:  item.SourceIP,
-					TargetIP:  item.TargetIP,
+					TargetIP:  defaultString(probeResult.TargetPodIP, item.TargetIP),
 					ServiceIP: item.ServiceIP,
 					Port:      item.Port,
-				})
+				}
+				correlation := analyzer.CorrelateDatapath(snapshot, traffic)
+				chainPath := toAPITraceSteps(item.SourceNode, correlation.ChainPath, 1)
+				if targetSnapshot, targetOK := snapshotByNode[probeResult.TargetNode]; targetOK {
+					chainPath = append(chainPath, toAPITraceSteps(probeResult.TargetNode, analyzer.TraceTargetIptables(targetSnapshot, traffic), len(chainPath)+1)...)
+				}
 				probeResult.Datapath = labv1alpha1.DatapathSummary{
-					CNI:               correlation.CNI,
-					CalicoOverlayMode: correlation.CalicoOverlayMode,
-					KubeProxyMode:     correlation.KubeProxyMode,
-					RelevantChains:    correlation.RelevantChains,
-					PodForwardChains:  correlation.PodForwardChains,
-					ServiceChains:     correlation.ServiceChains,
-					ConntrackMatched:  correlation.ConntrackMatched,
+					CNI:                   correlation.CNI,
+					CalicoOverlayMode:     correlation.CalicoOverlayMode,
+					KubeProxyMode:         correlation.KubeProxyMode,
+					RelevantChains:        correlation.RelevantChains,
+					PodForwardChains:      correlation.PodForwardChains,
+					ServiceChains:         correlation.ServiceChains,
+					ChainPath:             chainPath,
+					ServiceEndpointSource: serviceEndpointSource,
+					ConntrackMatched:      correlation.ConntrackMatched,
 				}
 			}
 			result.ProbeResults = append(result.ProbeResults, probeResult)
@@ -440,6 +457,38 @@ func buildProbeChecks(lab *labv1alpha1.NetworkProbeLab, pods []corev1.Pod, servi
 	}
 	sort.Slice(checks, func(i, j int) bool { return checks[i].ID < checks[j].ID })
 	return checks
+}
+
+func correlatedServiceBackend(serviceRef, sourceNode string, pods []corev1.Pod, services []corev1.Service) *corev1.Pod {
+	parts := strings.SplitN(serviceRef, "/", 2)
+	if len(parts) != 2 {
+		return nil
+	}
+	var service *corev1.Service
+	for idx := range services {
+		if services[idx].Namespace == parts[0] && services[idx].Name == parts[1] {
+			service = &services[idx]
+			break
+		}
+	}
+	if service == nil || len(service.Spec.Selector) == 0 {
+		return nil
+	}
+	selector := labels.SelectorFromSet(service.Spec.Selector)
+	var fallback *corev1.Pod
+	for idx := range pods {
+		pod := &pods[idx]
+		if pod.Namespace != service.Namespace || !selector.Matches(labels.Set(pod.Labels)) {
+			continue
+		}
+		if fallback == nil {
+			fallback = pod
+		}
+		if pod.Spec.NodeName != sourceNode {
+			return pod
+		}
+	}
+	return fallback
 }
 
 func defaultProtocols(protocols []string) []string {
@@ -863,6 +912,22 @@ func toAPIChains(chains []analyzer.IptablesChainSummary) []labv1alpha1.IptablesC
 	return out
 }
 
+func toAPITraceSteps(node string, steps []analyzer.IptablesTraceStep, startOrder int) []labv1alpha1.IptablesTraceStep {
+	out := make([]labv1alpha1.IptablesTraceStep, 0, len(steps))
+	for idx, step := range steps {
+		out = append(out, labv1alpha1.IptablesTraceStep{
+			Order:   int32(startOrder + idx),
+			Node:    node,
+			Stage:   step.Stage,
+			Table:   step.Table,
+			Chain:   step.Chain,
+			Action:  step.Action,
+			Purpose: step.Purpose,
+		})
+	}
+	return out
+}
+
 func probeResultFromReport(labName string, item probe.Result, nodeIPs map[string]string) labv1alpha1.NetworkProbeResult {
 	return labv1alpha1.NetworkProbeResult{
 		SourcePod:     defaultString(item.SourcePod, "job/"+probeJobName(labName, item.SourceNode)),
@@ -1108,7 +1173,7 @@ func (r *NetworkProbeLabReconciler) probeImage() string {
 	if image := os.Getenv("SMTX_PROBE_IMAGE"); image != "" {
 		return image
 	}
-	return "registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.1.0"
+	return "registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-operator:v0.2.1"
 }
 
 func networkReportLabels(lab *labv1alpha1.NetworkProbeLab) map[string]string {

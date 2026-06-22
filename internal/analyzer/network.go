@@ -22,8 +22,17 @@ type DatapathCorrelation struct {
 	RelevantChains    []string
 	PodForwardChains  []string
 	ServiceChains     []string
+	ChainPath         []IptablesTraceStep
 	ConntrackMatched  bool
 	IPVSMatched       bool
+}
+
+type IptablesTraceStep struct {
+	Stage   string
+	Table   string
+	Chain   string
+	Action  string
+	Purpose string
 }
 
 type IptablesChainSummary struct {
@@ -71,7 +80,263 @@ func CorrelateDatapath(snapshot agent.Snapshot, traffic TrafficObservation) Data
 			break
 		}
 	}
+	result.ChainPath = TraceSourceIptables(snapshot, traffic)
 	return result
+}
+
+func TraceSourceIptables(snapshot agent.Snapshot, traffic TrafficObservation) []IptablesTraceStep {
+	rules := parseIptables(snapshot.Iptables.Lines)
+	var out []IptablesTraceStep
+	appendExistingChain(&out, rules, "source-egress", []string{"raw", "mangle", "nat"}, "cali-PREROUTING", "Calico pre-routing hook for traffic leaving the source workload.")
+	if traffic.ServiceIP != "" {
+		out = append(out, traceServiceDNAT(rules, traffic)...)
+	}
+	appendExistingChain(&out, rules, "source-egress", []string{"filter"}, "cali-FORWARD", chainPurpose("cali-FORWARD"))
+	appendExistingChain(&out, rules, "source-egress", []string{"filter"}, "cali-from-wl-dispatch", chainPurpose("cali-from-wl-dispatch"))
+	if iface := workloadInterface(snapshot.Routes.Lines, traffic.SourceIP); iface != "" {
+		if endpointChain := dispatchTarget(rules, "filter", "cali-from-wl-dispatch", "-i", iface); endpointChain != "" {
+			appendTraceStep(&out, IptablesTraceStep{
+				Stage:   "source-egress",
+				Table:   "filter",
+				Chain:   endpointChain,
+				Action:  "policy for " + iface,
+				Purpose: chainPurpose(endpointChain),
+			})
+		}
+	}
+	appendExistingChain(&out, rules, "source-egress", []string{"filter"}, "KUBE-FORWARD", chainPurpose("KUBE-FORWARD"))
+	appendExistingChain(&out, rules, "source-egress", []string{"mangle", "nat"}, "cali-POSTROUTING", "Calico post-routing hook before traffic leaves the source node.")
+	return out
+}
+
+func TraceTargetIptables(snapshot agent.Snapshot, traffic TrafficObservation) []IptablesTraceStep {
+	rules := parseIptables(snapshot.Iptables.Lines)
+	var out []IptablesTraceStep
+	appendExistingChain(&out, rules, "target-ingress", []string{"raw", "mangle", "nat"}, "cali-PREROUTING", "Calico pre-routing hook for traffic entering the target node.")
+	appendExistingChain(&out, rules, "target-ingress", []string{"filter"}, "cali-FORWARD", chainPurpose("cali-FORWARD"))
+	appendExistingChain(&out, rules, "target-ingress", []string{"filter"}, "cali-to-wl-dispatch", chainPurpose("cali-to-wl-dispatch"))
+	if iface := workloadInterface(snapshot.Routes.Lines, traffic.TargetIP); iface != "" {
+		if endpointChain := dispatchTarget(rules, "filter", "cali-to-wl-dispatch", "-o", iface); endpointChain != "" {
+			appendTraceStep(&out, IptablesTraceStep{
+				Stage:   "target-ingress",
+				Table:   "filter",
+				Chain:   endpointChain,
+				Action:  "policy for " + iface,
+				Purpose: chainPurpose(endpointChain),
+			})
+		}
+	}
+	appendExistingChain(&out, rules, "target-ingress", []string{"filter"}, "KUBE-FORWARD", chainPurpose("KUBE-FORWARD"))
+	return out
+}
+
+type iptablesRules map[string]map[string][]string
+
+func parseIptables(lines []string) iptablesRules {
+	out := iptablesRules{}
+	table := ""
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "*") {
+			table = strings.TrimPrefix(trimmed, "*")
+			if out[table] == nil {
+				out[table] = map[string][]string{}
+			}
+			continue
+		}
+		if trimmed == "COMMIT" {
+			table = ""
+			continue
+		}
+		if table == "" {
+			continue
+		}
+		chain := extractRuleChain(trimmed)
+		if chain == "" {
+			continue
+		}
+		if _, ok := out[table][chain]; !ok {
+			out[table][chain] = nil
+		}
+		if strings.HasPrefix(trimmed, "-A ") {
+			out[table][chain] = append(out[table][chain], trimmed)
+		}
+	}
+	return out
+}
+
+func traceServiceDNAT(rules iptablesRules, traffic TrafficObservation) []IptablesTraceStep {
+	entryRule := findMatchingRule(rules["nat"]["KUBE-SERVICES"], func(line string) bool {
+		if traffic.ServiceIP == "" || !strings.Contains(line, traffic.ServiceIP) {
+			return false
+		}
+		if traffic.Port > 0 && !strings.Contains(line, "--dport "+int32String(traffic.Port)) {
+			return false
+		}
+		protocol := iptablesProtocol(traffic.Protocol)
+		return protocol == "" || strings.Contains(strings.ToLower(line), "-p "+protocol)
+	})
+	serviceChain := jumpTarget(entryRule)
+	if serviceChain == "" {
+		return nil
+	}
+	out := []IptablesTraceStep{{
+		Stage:   "service-dnat",
+		Table:   "nat",
+		Chain:   "KUBE-SERVICES",
+		Action:  "jump " + serviceChain,
+		Purpose: chainPurpose("KUBE-SERVICES"),
+	}}
+	appendTraceStep(&out, IptablesTraceStep{
+		Stage:   "service-dnat",
+		Table:   "nat",
+		Chain:   serviceChain,
+		Purpose: chainPurpose(serviceChain),
+	})
+
+	endpointChain := ""
+	for _, line := range rules["nat"][serviceChain] {
+		candidate := jumpTarget(line)
+		if !strings.HasPrefix(candidate, "KUBE-SEP-") {
+			continue
+		}
+		if traffic.TargetIP != "" && strings.Contains(line, traffic.TargetIP) {
+			endpointChain = candidate
+			break
+		}
+		if endpointChain == "" && endpointDNATMatches(rules["nat"][candidate], traffic.TargetIP) {
+			endpointChain = candidate
+		}
+	}
+	if endpointChain == "" {
+		return out
+	}
+	out[len(out)-1].Action = "select " + endpointChain
+	appendTraceStep(&out, IptablesTraceStep{
+		Stage:   "service-dnat",
+		Table:   "nat",
+		Chain:   endpointChain,
+		Action:  dnatAction(rules["nat"][endpointChain]),
+		Purpose: chainPurpose(endpointChain),
+	})
+	return out
+}
+
+func appendExistingChain(out *[]IptablesTraceStep, rules iptablesRules, stage string, tables []string, chain, purpose string) {
+	for _, table := range tables {
+		if _, ok := rules[table][chain]; ok {
+			appendTraceStep(out, IptablesTraceStep{Stage: stage, Table: table, Chain: chain, Purpose: purpose})
+			return
+		}
+	}
+}
+
+func appendTraceStep(out *[]IptablesTraceStep, step IptablesTraceStep) {
+	if step.Chain == "" {
+		return
+	}
+	for _, existing := range *out {
+		if existing.Stage == step.Stage && existing.Table == step.Table && existing.Chain == step.Chain {
+			return
+		}
+	}
+	*out = append(*out, step)
+}
+
+func workloadInterface(routes []string, ip string) string {
+	if ip == "" {
+		return ""
+	}
+	for _, line := range routes {
+		fields := strings.Fields(line)
+		if len(fields) < 3 || strings.TrimSuffix(fields[0], "/32") != ip {
+			continue
+		}
+		for idx := 1; idx+1 < len(fields); idx++ {
+			if fields[idx] == "dev" {
+				return fields[idx+1]
+			}
+		}
+	}
+	return ""
+}
+
+func dispatchTarget(rules iptablesRules, table, chain, direction, iface string) string {
+	for _, line := range rules[table][chain] {
+		fields := strings.Fields(line)
+		for idx := 0; idx+1 < len(fields); idx++ {
+			if fields[idx] == direction && fields[idx+1] == iface {
+				return jumpTarget(line)
+			}
+		}
+	}
+	return ""
+}
+
+func jumpTarget(line string) string {
+	fields := strings.Fields(line)
+	for idx := 0; idx+1 < len(fields); idx++ {
+		if fields[idx] == "-j" || fields[idx] == "-g" {
+			return fields[idx+1]
+		}
+	}
+	return ""
+}
+
+func endpointDNATMatches(lines []string, targetIP string) bool {
+	if targetIP == "" {
+		return false
+	}
+	for _, line := range lines {
+		if strings.Contains(line, "--to-destination "+targetIP+":") || strings.Contains(line, "--to-destination "+targetIP+" ") {
+			return true
+		}
+	}
+	return false
+}
+
+func dnatAction(lines []string) string {
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		for idx := 0; idx+1 < len(fields); idx++ {
+			if fields[idx] == "--to-destination" {
+				return "DNAT " + fields[idx+1]
+			}
+		}
+	}
+	return "DNAT endpoint"
+}
+
+func findMatchingRule(lines []string, matches func(string) bool) string {
+	for _, line := range lines {
+		if matches(line) {
+			return line
+		}
+	}
+	return ""
+}
+
+func int32String(value int32) string {
+	if value == 0 {
+		return "0"
+	}
+	var digits [11]byte
+	idx := len(digits)
+	for value > 0 {
+		idx--
+		digits[idx] = byte('0' + value%10)
+		value /= 10
+	}
+	return string(digits[idx:])
+}
+
+func iptablesProtocol(protocol string) string {
+	switch strings.ToLower(protocol) {
+	case "http", "https":
+		return "tcp"
+	default:
+		return strings.ToLower(protocol)
+	}
 }
 
 func SummarizeIptables(lines []string) ([]IptablesChainSummary, []IptablesChainSummary) {

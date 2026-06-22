@@ -46,7 +46,7 @@ spec:
       maxEntries: 2000
   agent:
     serviceAccountName: smtx-lab-agent
-    image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.1.0
+    image: registry.cn-hangzhou.aliyuncs.com/smtxlab/smtx-lab-agent:v0.2.1
     nodeSelector: {}
     tolerations:
       - operator: Exists

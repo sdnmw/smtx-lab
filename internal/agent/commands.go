@@ -45,6 +45,21 @@ func (c Collector) CollectConntrack(ctx context.Context, filter ConntrackFilter)
 	}, nil
 }
 
+func (c Collector) CollectRoutes(ctx context.Context) (CommandSnapshot, error) {
+	out, err := c.run(ctx, "ip", "-o", "route", "show")
+	if err != nil {
+		return CommandSnapshot{Available: false}, err
+	}
+	lines, truncated := boundedLines(out, c.MaxOutputBytes)
+	return CommandSnapshot{
+		Available: true,
+		Captured:  true,
+		Truncated: truncated,
+		Lines:     lines,
+		LineCount: len(lines),
+	}, nil
+}
+
 func (c Collector) CollectIPVS() (IPVSSnapshot, error) {
 	procRoot := c.ProcRoot
 	if procRoot == "" {

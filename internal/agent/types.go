@@ -24,6 +24,7 @@ type Snapshot struct {
 	Iptables  CommandSnapshot `json:"iptables,omitempty"`
 	IPVS      IPVSSnapshot    `json:"ipvs,omitempty"`
 	Conntrack CommandSnapshot `json:"conntrack,omitempty"`
+	Routes    CommandSnapshot `json:"routes,omitempty"`
 	Errors    []string        `json:"errors,omitempty"`
 }
 
